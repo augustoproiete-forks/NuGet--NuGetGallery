@@ -35,6 +35,8 @@ namespace GalleryTools.Commands
 
         protected virtual int UpdateBatchSize => 100;
 
+        protected virtual MetadataSourceType SourceType { get; } = MetadataSourceType.Nuspec;
+
         public static void Configure<TCommand>(CommandLineApplication config) where TCommand : BackfillCommand<TMetadata>, new()
         {
             config.Description = "Backfill metadata for packages in the gallery";
@@ -118,11 +120,20 @@ namespace GalleryTools.Commands
                         var id = package.PackageRegistration.Id;
                         var version = package.NormalizedVersion;
 
-                        var nuspecUri = $"{flatContainerUri}/{id.ToLowerInvariant()}/{version.ToLowerInvariant()}/{id.ToLowerInvariant()}.nuspec";
-
                         try
                         {
-                            var metadata = await FetchMetadata(http, nuspecUri);
+                            var metadata = default(TMetadata);
+
+                            if (SourceType == MetadataSourceType.Nuspec)
+                            {
+                                var nuspecUri =
+                                    $"{flatContainerUri}/{id.ToLowerInvariant()}/{version.ToLowerInvariant()}/{id.ToLowerInvariant()}.nuspec";
+                                metadata = await FetchMetadataAsync(http, nuspecUri);
+                            }
+                            else if (SourceType == MetadataSourceType.Entities)
+                            {
+                                metadata = ReadMetadata(package);
+                            }
 
                             if (ShouldWriteMetadata(metadata))
                             {
@@ -199,7 +210,6 @@ namespace GalleryTools.Commands
 
                             if (package != null)
                             {
-
                                 UpdatePackage(package, metadata.Metadata);
 
                                 logger.LogPackage(metadata.Id, metadata.Version, "Metadata updated.");
@@ -234,7 +244,9 @@ namespace GalleryTools.Commands
             }
         }
 
-        protected abstract TMetadata ReadMetadata(NuspecReader reader);
+        protected virtual TMetadata ReadMetadata(NuspecReader reader) => default;
+
+        protected virtual TMetadata ReadMetadata(Package package) => default;
 
         protected abstract bool ShouldWriteMetadata(TMetadata metadata);
 
@@ -251,7 +263,7 @@ namespace GalleryTools.Commands
             return result.First().AbsoluteUri.TrimEnd('/');
         }
 
-        private async Task<TMetadata> FetchMetadata(HttpClient httpClient, string nuspecUri)
+        private async Task<TMetadata> FetchMetadataAsync(HttpClient httpClient, string nuspecUri)
         {
             using (var nuspecStream = await httpClient.GetStreamAsync(nuspecUri))
             {
@@ -459,6 +471,12 @@ namespace GalleryTools.Commands
             {
                 Writer.Dispose();
             }
+        }
+
+        public enum MetadataSourceType
+        {
+            Nuspec,
+            Entities
         }
     }
 }

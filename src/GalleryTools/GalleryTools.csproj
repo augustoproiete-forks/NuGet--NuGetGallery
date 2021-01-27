@@ -45,6 +45,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Commands\BackfillCommand.cs" />
+    <Compile Include="Commands\BackfillTfmMetadataCommand.cs" />
     <Compile Include="Commands\BackfillDevelopmentDependencyMetadataCommand.cs" />
     <Compile Include="Commands\BackfillRepositoryMetadataCommand.cs" />
     <Compile Include="Commands\HashCommand.cs" />
